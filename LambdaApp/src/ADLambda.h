@@ -35,8 +35,8 @@ public:
 	virtual asynStatus disconnect();
 	virtual asynStatus connect();
 	
-	void processTwelveBit(const void*, NDArrayInfo);
-	void processTwentyFourBit(const void*, NDArrayInfo);
+	void processTwelveBit(const void*, NDArrayInfo, void*);
+	void processTwentyFourBit(const void*, NDArrayInfo, void*);
 	
 	void waitAcquireThread();
 	void acquireThread(int receiver);
@@ -92,6 +92,7 @@ private:
 
     std::string configFileName;
     NDArray *pImage;
+    NDArray** saved_frames;
     NDDataType_t imageDataType;
 };
 

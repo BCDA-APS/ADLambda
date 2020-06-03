@@ -94,7 +94,11 @@ ADLambda::ADLambda(const char *portName, const char *configPath, int numModules)
 	         0, 
 	         0),
 configFileName(configPath)
-{	
+{
+	this->saved_frames = calloc(numModules, sizeof(NDArray*));
+	
+	for (int index = 0; index < numModules; index += 1)    { this->saved_frames[index] = nullptr; }
+
 	createParam(LAMBDA_VersionNumberString, asynParamOctet, &LAMBDA_VersionNumber);
 	createParam(LAMBDA_ConfigFilePathString, asynParamOctet, &LAMBDA_ConfigFilePath);
 	createParam(LAMBDA_EnergyThresholdString, asynParamFloat64, &LAMBDA_EnergyThreshold);
@@ -217,7 +221,7 @@ asynStatus ADLambda::acquireStop()
 	return (asynStatus)status;
 }
 
-void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
+void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* output_data)
 {
 	const uint16_t* frame_data = reinterpret_cast<const uint16_t*>(data);	
 
@@ -230,7 +234,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsUInt8);
 			const uint16_t*first = frame_data;
 			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			unsigned char  *result = (unsigned char *)pImage->pData;
+			unsigned char  *result = (unsigned char *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to UInt8 %d %p, %p , %p\n", 
 				      imageDataType, first, last, result);
@@ -246,7 +250,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsInt16);
 			const uint16_t*first = frame_data;
 			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			short  *result = (short *)pImage->pData;
+			short  *result = (short *)output_data;
 
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to Int16 %d %p, %p , %p\n",
 				      imageDataType, first, last, result);
@@ -257,7 +261,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 		
 		case NDUInt16:
 		{
-			memcpy(pImage->pData, frame_data, arrayInfo.totalBytes);
+			memcpy(output_data, frame_data, arrayInfo.totalBytes);
 		}
 		break;
 		
@@ -268,7 +272,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsInt32);
 			const uint16_t*first = frame_data;
 			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			int  *result = (int *)pImage->pData;
+			int  *result = (int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to Int32 %d %p, %p , %p\n",
 				      imageDataType, first, last, result);
@@ -284,7 +288,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsUInt32);
 			const uint16_t*first = frame_data;
 			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			unsigned int  *result = (unsigned int *)pImage->pData;
+			unsigned int  *result = (unsigned int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to UInt32 %d %p, %p , %p\n",
 				      imageDataType, first, last, result);
@@ -304,7 +308,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo)
 	}
 }
 
-void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
+void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, void* output_data)
 {
 	const uint32_t* frame_data = reinterpret_cast<const uint32_t*>(data);
 
@@ -317,7 +321,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt8);
 			const uint32_t* first = frame_data;
 			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			unsigned char  *result = (unsigned char *)pImage->pData;
+			unsigned char  *result = (unsigned char *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to UInt8 %d %p, %p , %p\n",
 			          imageDataType, first, last, result);
@@ -334,7 +338,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsInt16);
 			const uint32_t* first = frame_data;
 			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			short  *result = (short *)pImage->pData;
+			short  *result = (short *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to Int16 %d %p, %p , %p\n",
 			          imageDataType, first, last, result);
@@ -351,7 +355,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt16);
 			const uint32_t* first = frame_data;
 			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			unsigned short  *result = (unsigned short *)pImage->pData;
+			unsigned short  *result = (unsigned short *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to UInt16 %d %p, %p , %p\n",
 			          imageDataType, first, last, result);
@@ -367,7 +371,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt32);
 			const uint32_t* first = frame_data;
 			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
-			int  *result = (int *)pImage->pData;
+			int  *result = (int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to Int32 %d %p, %p , %p\n",
 			          imageDataType, first, last, result);
@@ -378,7 +382,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo)
 		
 		case NDUInt32:
 		{
-			memcpy(pImage->pData, frame_data, arrayInfo.totalBytes);
+			memcpy(output_data, frame_data, arrayInfo.totalBytes);
 		}
 		break;
 		
@@ -483,18 +487,18 @@ void ADLambda::acquireThread(int receiver)
 	int toRead;
 	getIntegerParam(ADNumImages, &toRead);
 	
+	std::shared_ptr<xsp::Receiver> rec = this->recs[receiver];
+	
 	while (numAcquired < toRead &&
-	       (this->recs[receiver]->isBusy() || this->recs[receiver]->framesQueued()))
+	       (rec->isBusy() || rec->framesQueued()))
 	{	
-		int numBuffered = this->recs[receiver]->framesQueued();
+		int numBuffered = rec->framesQueued();
 		
 		if (numBuffered == 0)    { continue; }
 		
 		this->setIntegerParam(receiver, LAMBDA_DecodedQueueDepth, numBuffered);
 		
-		const xsp::Frame* frame = this->recs[receiver]->frame(1500);
-	
-		printf("Receiver %d received frame %p\n", receiver, frame);
+		const xsp::Frame* frame = rec->frame(1500);
 	
 		if (frame == nullptr) { continue; }
 	
@@ -515,7 +519,7 @@ void ADLambda::acquireThread(int receiver)
 			this->setIntegerParam(LAMBDA_BadImage, 1);
 			this->callParamCallbacks();
 			
-			this->recs[receiver]->release(frameNo);
+			rec->release(frameNo);
 			
 			continue;
 		}
@@ -525,30 +529,28 @@ void ADLambda::acquireThread(int receiver)
 			this->callParamCallbacks();
 		}
 
-		if (this->pArrays[receiver])    { this->pArrays[receiver]->release(); }
+		if (this->saved_frames[receiver])    { this->saved_frames[receiver]->release(); }
 		
 		int arrayCallbacks;
 		getIntegerParam(NDArrayCallbacks, &arrayCallbacks);
 		
 		if (arrayCallbacks)
 		{
-			this->pArrays[receiver] = pNDArrayPool->alloc(2, imagedims, this->imageDataType, 0, NULL);
+			NDArray* output = pNDArrayPool->alloc(2, imagedims, this->imageDataType, 0, NULL);
+			
+			this->saved_frames[receiver] = output;
 			
 			NDArrayInfo arrayInfo;
-			this->pArrays[receiver]->getInfo(&arrayInfo);
+			output->getInfo(&arrayInfo);
 			
-			xsp::Position modulepos = this->recs[receiver]->position();
-			int xval = (int) modulepos.x;
-			int yval = (int) modulepos.y;
+			xsp::Position modulepos = rec->position();
+			output->dims[0].offset = (int) modulepos.x;
+			output->dims[1].offset = (int) modulepos.y;
 			
-			this->pArrays[receiver]->pAttributeList->clear();
-			this->pArrays[receiver]->pAttributeList->add("LAMBDA_XOFF", "Image X Offset", NDAttrInt32,  &xval);
-			this->pArrays[receiver]->pAttributeList->add("LAMBDA_YOFF", "Image Y Offset", NDAttrInt32,  &yval);
+			int bitDepth = rec->frameDepth();
 			
-			int bitDepth = this->recs[receiver]->frameDepth();
-			
-			if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(data, arrayInfo); }
-			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, arrayInfo); }
+			if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(data, arrayInfo, output->pData); }
+			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, arrayInfo, output->pData); }
 			
 			int arrayCounter;
 			getIntegerParam(NDArrayCounter, &arrayCounter);
@@ -560,20 +562,16 @@ void ADLambda::acquireThread(int receiver)
 			/* Time stamps */
 			epicsTimeStamp currentTime;
 			epicsTimeGetCurrent(&currentTime);
-			this->pArrays[receiver]->timeStamp = currentTime.secPastEpoch + currentTime.nsec / ONE_BILLION;
-			updateTimeStamp(&this->pArrays[receiver]->epicsTS);
+			output->timeStamp = currentTime.secPastEpoch + currentTime.nsec / ONE_BILLION;
+			updateTimeStamp(&output->epicsTS);
 			
-			pImage->uniqueId = frameNo;
+			output->uniqueId = frameNo;
 			
 			callParamCallbacks();
-			
-			/* get attributes that have been defined for this
-			* driver */
-			getAttributes(this->pArrays[receiver]->pAttributeList);
-			doCallbacksGenericPointer(this->pArrays[receiver], NDArrayData, receiver);
+			doCallbacksGenericPointer(output, NDArrayData, receiver);
 		}
 		
-		this->recs[receiver]->release(frameNo);
+		rec->release(frameNo);
 	}
 	
 	this->threadFinishEvent->trigger();
