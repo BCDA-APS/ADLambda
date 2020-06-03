@@ -469,6 +469,9 @@ void ADLambda::acquireThread(int receiver)
 	setIntegerParam(receiver, LAMBDA_BadFrameCounter, 0);
 	callParamCallbacks();
 
+	this->setIntegerParam(receiver, LAMBDA_BadImage, 0);
+	this->callParamCallbacks();
+
 	size_t imagedims[2];
 	
 	int width, height;
@@ -522,11 +525,6 @@ void ADLambda::acquireThread(int receiver)
 			rec->release(frameNo);
 			
 			continue;
-		}
-		else
-		{
-			this->setIntegerParam(receiver, LAMBDA_BadImage, 0);
-			this->callParamCallbacks();
 		}
 
 		if (this->saved_frames[receiver])    { this->saved_frames[receiver]->release(); }
