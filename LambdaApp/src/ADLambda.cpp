@@ -436,6 +436,8 @@ void ADLambda::waitAcquireThread()
 		
 		det->startAcquisition();
 		
+		this->unlock();
+		
 		for (int index = 0; index < this->recs.size(); index += 1)
 		{
 			this->spawnAcquireThread(index);
@@ -449,6 +451,8 @@ void ADLambda::waitAcquireThread()
 			
 			threads_running -= 1;
 		}
+		
+		this->lock();
 		
 		acquireStop();
 	}
@@ -492,10 +496,13 @@ void ADLambda::acquireThread(int receiver)
 	
 	std::shared_ptr<xsp::Receiver> rec = this->recs[receiver];
 	
-	while (numAcquired < toRead &&
-	       (rec->isBusy() || rec->framesQueued()))
+	while (numAcquired < toRead) 
+	//&&  (rec->isBusy() || rec->framesQueued()))
 	{	
-		int numBuffered = rec->framesQueued();
+		int numBuffered = 0;
+		numBuffered = rec->framesQueued();
+		
+		if (numBuffered < 0) { printf("rec->framesQueued() returned %d\n", numBuffered); }
 		
 		if (numBuffered == 0)    { continue; }
 		
@@ -503,7 +510,7 @@ void ADLambda::acquireThread(int receiver)
 		
 		const xsp::Frame* frame = rec->frame(1500);
 	
-		if (frame == nullptr) { continue; }
+		if (frame == nullptr) { printf("Nullptr returned from receiver\n"); continue; }
 	
 		long frameNo = frame->nr();
 		const void* data = frame->data();
@@ -551,10 +558,13 @@ void ADLambda::acquireThread(int receiver)
 			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, arrayInfo, output->pData); }
 			
 			int arrayCounter;
+			
+			this->lock();
 			getIntegerParam(NDArrayCounter, &arrayCounter);
 			arrayCounter += 1;
 			setIntegerParam(NDArrayCounter, arrayCounter);
-			
+			this->unlock();
+						
 			setIntegerParam(NDArraySize, arrayInfo.totalBytes);
 			
 			/* Time stamps */
