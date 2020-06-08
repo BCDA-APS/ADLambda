@@ -122,6 +122,12 @@ asynStatus ADLambda::connect()
 {
 	sys = xsp::createSystem(configFileName);
 	
+	if (sys == nullptr)
+	{
+		printf("Unable to start system\n");
+		return;
+	}
+	
 	sys->connect();
 	sys->initialize();
 
