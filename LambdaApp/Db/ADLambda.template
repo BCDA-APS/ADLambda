@@ -26,13 +26,6 @@ record(stringin, "$(P)$(R)DetCoreVersion")
     field(SCAN, "I/O Intr")
 }
 
-record(ao, "$(P)$(R)EnergyThreshold")
-{
-   field(DTYP, "asynFloat64")
-   field(OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))LAMBDA_ENERGY_THRESHOLD")
-   field(PREC, "4")
-}
-
 record(longin, "$(P)$(R)DecodedQueueDepth")
 {
    field(DTYP, "asynInt32")
@@ -76,10 +69,14 @@ record(mbbo, "$(P)$(R)OperatingMode")
    field(PINI, "YES")
    field(DTYP, "asynInt32")
    field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))LAMBDA_OPERATING_MODE")
-   field(ZRST, "ContinuousReadWrite")
+   field(ZRST, "SixteenBit")
    field(ZRVL, "0")
    field(ONST, "TwentyFourBit")
    field(ONVL, "1")
+   field(TWST, "SixteenBit Dual-Threshold")
+   field(TWVL, "2")
+   field(THST, "TwentyFourBit Dual-Threshold")
+   field(THVL, "3")
    field(VAL,  "0")
    info(autosaveFields, "VAL")
 }
