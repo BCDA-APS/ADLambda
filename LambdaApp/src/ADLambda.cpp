@@ -29,8 +29,6 @@ static void receiver_acquire_callback(void *drvPvt)
 {
 	acquire_data* data = (acquire_data*) drvPvt;
 	
-	printf("Spawing acquire thread for receiver: %d\n", data->receiver);
-	
 	data->driver->acquireThread(data->receiver);
 	
 	delete data;
@@ -102,6 +100,7 @@ configFileName(configPath)
 	createParam(LAMBDA_VersionNumberString, asynParamOctet, &LAMBDA_VersionNumber);
 	createParam(LAMBDA_ConfigFilePathString, asynParamOctet, &LAMBDA_ConfigFilePath);
 	createParam(LAMBDA_EnergyThresholdString, asynParamFloat64, &LAMBDA_EnergyThreshold);
+	createParam(LAMBDA_DualThresholdString, asynParamFloat64, &LAMBDA_DualThreshold);
 	createParam(LAMBDA_DecodedQueueDepthString, asynParamInt32, &LAMBDA_DecodedQueueDepth);
 	createParam(LAMBDA_OperatingModeString, asynParamInt32, &LAMBDA_OperatingMode);
 	createParam(LAMBDA_DetectorStateString, asynParamInt32, &LAMBDA_DetectorState);
@@ -109,6 +108,8 @@ configFileName(configPath)
 	createParam(LAMBDA_MedipixIDsString, asynParamOctet, &LAMBDA_MedipixIDs);
 	createParam(LAMBDA_DetCoreVersionNumberString, asynParamOctet, &LAMBDA_DetCoreVersionNumber);
 	createParam(LAMBDA_BadImageString, asynParamInt32, &LAMBDA_BadImage);
+	createParam(LAMBDA_GetThresholdsString, asynParamInt32, &LAMBDA_GetThresholds);
+	createParam(LAMBDA_SetThresholdsString, asynParamInt32, &LAMBDA_SetThresholds);
 
 	this->startAcquireEvent = new epicsEvent();
 	this->threadFinishEvent = new epicsEvent();
@@ -491,7 +492,13 @@ void ADLambda::acquireThread(int receiver)
 	
 	imagedims[0] = width;
 	imagedims[1] = height;
-
+	
+	int operating_mode;
+	
+	this->getIntegerParam(LAMBDA_OperatingMode, operating_mode);
+	
+	if (operating_mode > 1)    { imagedims[1] = height * 2; }
+	
 	/*
 	 * Each module will use address 0's number of images
 	 * so that the user doesn't have to change the number
@@ -502,24 +509,34 @@ void ADLambda::acquireThread(int receiver)
 	
 	std::shared_ptr<xsp::Receiver> rec = this->recs[receiver];
 	
+	bool dual = false;
+	
+	xsp::Frame* frame = NULL;
+	xsp::Frame* dual_frame = NULL;
+	
 	while (numAcquired < toRead) 
 	//&&  (rec->isBusy() || rec->framesQueued()))
 	{	
-		int numBuffered = 0;
-		numBuffered = rec->framesQueued();
-		
-		if (numBuffered < 0) { printf("rec->framesQueued() returned %d\n", numBuffered); }
-		
-		if (numBuffered == 0)    { continue; }
-		
-		this->setIntegerParam(receiver, LAMBDA_DecodedQueueDepth, numBuffered);
-		
-		const xsp::Frame* frame = rec->frame(1500);
+		int numBuffered = rec->framesQueued();
 	
-		if (frame == nullptr) { printf("Nullptr returned from receiver\n"); continue; }
+		if (numBuffered < 0) { printf("rec->framesQueued() returned %d\n", numBuffered); }
+	
+		if (numBuffered == 0)    { continue; }
+	
+		this->setIntegerParam(receiver, LAMBDA_DecodedQueueDepth, numBuffered);
+	
+		xsp::Frame* temp = rec->frame(1500);
+		
+		if (temp == nullptr) { printf("Nullptr returned from receiver\n"); continue; }	
+	
+		if (!dual)    { frame = temp; }
+		else          { dual_frame = temp; }
+		
+		if (operating_mode > 1 && !dual)    { dual = true; continue; }
+		else                                { dual = false; }
 	
 		long frameNo = frame->nr();
-		const void* data = frame->data();
+		const char* data = (const char*) frame->data();
 		
 		numAcquired += 1;
 		this->setIntegerParam(receiver, ADNumImagesCounter, numAcquired);
@@ -536,6 +553,7 @@ void ADLambda::acquireThread(int receiver)
 			this->callParamCallbacks();
 			
 			rec->release(frameNo);
+			if (dual_frame)    { rec->release(dual_frame->nr()); }
 			
 			continue;
 		}
@@ -562,6 +580,16 @@ void ADLambda::acquireThread(int receiver)
 			
 			if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(data, arrayInfo, output->pData); }
 			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, arrayInfo, output->pData); }
+			
+			if (operating_mode > 1)
+			{
+				unsigned int offset = height * width * arrayInfo.bytesPerElement;
+			
+				const char* output_data = (const char*) output->pData;
+			
+				if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(dual_frame->data(), arrayInfo, &output_data[offset]); }
+				else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(dual_frame->data(), arrayInfo, &output_data[offset]); }
+			}
 			
 			int arrayCounter;
 			
@@ -648,13 +676,8 @@ asynStatus ADLambda::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 	}
 	else if (function == ADAcquirePeriod)
 	{
-		printf("Setting Acquire Period\n");
 		acquirePeriod = value;
 		setDoubleParam(function, acquirePeriod);
-	}
-	else if (function == LAMBDA_EnergyThreshold)
-	{
-		det->setThresholds(std::vector<double>{value});
 	}
 	else 
 	{
@@ -742,6 +765,60 @@ asynStatus ADLambda::writeInt32(asynUser *pasynUser, epicsInt32 value) {
 			det->setOperationMode(xsp::lambda::OperationMode(xsp::lambda::BitDepth::DEPTH_24));
 			setIntegerParam(NDDataType, NDUInt32);
 			callParamCallbacks();
+		}
+		else if (value == 2)
+		{
+			det->setOperationMode(xsp::lambda::OperationMode(xsp::lambda::BitDepth::DEPTH_12, 
+			                                                 xsp::lambda::ChargeSumming::OFF,
+			                                                 xsp::lambda::CounterMode::DUAL));
+			setIntegerParam(NDDataType, NDUInt16);
+			callParamCallbacks();
+		}
+		else if (value == 3)
+		{
+			det->setOperationMode(xsp::lambda::OperationMode(xsp::lambda::BitDepth::DEPTH_24, 
+			                                                 xsp::lambda::ChargeSumming::OFF,
+			                                                 xsp::lambda::CounterMode::DUAL));
+			setIntegerParam(NDDataType, NDUInt32);
+			callParamCallbacks();
+		}
+	}
+	else if (function == LAMBDA_GetThresholds)
+	{
+		if (value == 1)
+		{
+			std::vector<double> thresholds = det->thresholds();
+		
+			for (int index = 0; index < this->recs.size(); index += 1)
+			{
+				setDoubleParam(index, LAMBDA_EnergyThreshold, thresholds[index]);
+			}
+		}
+	}
+	else if (function == LAMBDA_SetThresholds)
+	{
+		if (value == 1)
+		{
+			std::vector<double> thresholds;
+			
+			int operating_mode;
+			getIntegerParam(LAMBDA_OperatingMode, &operating_mode);
+			
+			for (int index = 0; index < this->recs.size(); index += 1)
+			{
+				double val;
+				getDoubleParam(index, LAMBDA_EnergyThreshold, &val);
+				
+				thresholds.push_back(val);
+				
+				if (operating_mode > 1)
+				{
+					getDoubleParam(index, LAMBDA_DualThreshold, &val);
+					thresholds.push_back(val);
+				}			
+			}
+			
+			det->setThresholds(thresholds);
 		}
 	}
 	else if (function < LAMBDA_FIRST_PARAM) 
