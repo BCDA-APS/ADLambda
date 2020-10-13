@@ -35,8 +35,8 @@ public:
 	virtual asynStatus disconnect();
 	virtual asynStatus connect();
 	
-	void processTwelveBit(const void*, NDArrayInfo, void*);
-	void processTwentyFourBit(const void*, NDArrayInfo, void*);
+	void processTwelveBit(const void*, void*, int);
+	void processTwentyFourBit(const void*, void*, int);
 	
 	void waitAcquireThread();
 	void acquireThread(int receiver);

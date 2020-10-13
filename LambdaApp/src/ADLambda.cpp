@@ -228,7 +228,7 @@ asynStatus ADLambda::acquireStop()
 	return (asynStatus)status;
 }
 
-void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* output_data)
+void ADLambda::processTwelveBit(const void* data, void* output_data, int nelements)
 {
 	const uint16_t* frame_data = reinterpret_cast<const uint16_t*>(data);	
 
@@ -240,7 +240,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 			
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsUInt8);
 			const uint16_t*first = frame_data;
-			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint16_t*last = frame_data + nelements;
 			unsigned char  *result = (unsigned char *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to UInt8 %d %p, %p , %p\n", 
@@ -256,7 +256,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 				   
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsInt16);
 			const uint16_t*first = frame_data;
-			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint16_t*last = frame_data + nelements;
 			short  *result = (short *)output_data;
 
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to Int16 %d %p, %p , %p\n",
@@ -268,7 +268,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 		
 		case NDUInt16:
 		{
-			memcpy(output_data, frame_data, arrayInfo.totalBytes);
+			memcpy(output_data, frame_data, nelements * sizeof(epicsInt16));
 		}
 		break;
 		
@@ -278,7 +278,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 			
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsInt32);
 			const uint16_t*first = frame_data;
-			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint16_t*last = frame_data + nelements;
 			int  *result = (int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to Int32 %d %p, %p , %p\n",
@@ -294,7 +294,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 			
 			int scaleBytes = sizeof(epicsUInt16)/sizeof(epicsUInt32);
 			const uint16_t*first = frame_data;
-			const uint16_t*last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint16_t*last = frame_data + nelements;
 			unsigned int  *result = (unsigned int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt16 to UInt32 %d %p, %p , %p\n",
@@ -315,7 +315,7 @@ void ADLambda::processTwelveBit(const void* data, NDArrayInfo arrayInfo, void* o
 	}
 }
 
-void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, void* output_data)
+void ADLambda::processTwentyFourBit(const void* data, void* output_data, int nelements)
 {
 	const uint32_t* frame_data = reinterpret_cast<const uint32_t*>(data);
 
@@ -327,7 +327,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, voi
 			
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt8);
 			const uint32_t* first = frame_data;
-			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint32_t* last = frame_data + nelements;
 			unsigned char  *result = (unsigned char *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to UInt8 %d %p, %p , %p\n",
@@ -344,7 +344,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, voi
 			
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsInt16);
 			const uint32_t* first = frame_data;
-			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint32_t* last = frame_data + nelements;
 			short  *result = (short *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to Int16 %d %p, %p , %p\n",
@@ -361,7 +361,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, voi
 			
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt16);
 			const uint32_t* first = frame_data;
-			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint32_t* last = frame_data + nelements;
 			unsigned short  *result = (unsigned short *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to UInt16 %d %p, %p , %p\n",
@@ -377,7 +377,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, voi
 			
 			int scaleBytes = sizeof(epicsUInt32)/sizeof(epicsUInt32);
 			const uint32_t* first = frame_data;
-			const uint32_t* last = frame_data + arrayInfo.totalBytes/scaleBytes;
+			const uint32_t* last = frame_data + nelements;
 			int  *result = (int *)output_data;
 			
 			asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "Copying from UInt32 to Int32 %d %p, %p , %p\n",
@@ -389,7 +389,7 @@ void ADLambda::processTwentyFourBit(const void* data, NDArrayInfo arrayInfo, voi
 		
 		case NDUInt32:
 		{
-			memcpy(output_data, frame_data, arrayInfo.totalBytes);
+			memcpy(output_data, frame_data, nelements * sizeof(epicsUInt32));
 		}
 		break;
 		
@@ -578,8 +578,8 @@ void ADLambda::acquireThread(int receiver)
 			
 			int bitDepth = rec->frameDepth();
 			
-			if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(data, arrayInfo, output->pData); }
-			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, arrayInfo, output->pData); }
+			if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(data, output->pData, height * width); }
+			else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(data, output->pData, height * width); }
 			
 			if (operating_mode > 1)
 			{
@@ -587,8 +587,8 @@ void ADLambda::acquireThread(int receiver)
 			
 				const char* output_data = (const char*) output->pData;
 			
-				if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(dual_frame->data(), arrayInfo, &output_data[offset]); }
-				else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(dual_frame->data(), arrayInfo, &output_data[offset]); }
+				if      (bitDepth == TWELVE_BIT)         { this->processTwelveBit(dual_frame->data(), &output_data[offset], height * width); }
+				else if (bitDepth == TWENTY_FOUR_BIT)    { this->processTwentyFourBit(dual_frame->data(), &output_data[offset], height * width); }
 			}
 			
 			int arrayCounter;
