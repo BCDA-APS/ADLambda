@@ -460,7 +460,6 @@ void ADLambda::waitAcquireThread()
 			
 			det->startAcquisition();
 
-			this->unlock();
 		}
 		catch(const xsp::RuntimeError& e)
 		{
@@ -484,13 +483,13 @@ void ADLambda::waitAcquireThread()
 		// Wait for all threads to finish acquiring
 		for (size_t index = 0; index < this->recs.size(); index += 1)
 		{
+		  this->unlock();
 			this->threadFinishEvents[index]->wait();
+			this->lock();
 			
 			decrementValue(LAMBDA_ReadoutThreads);
 			callParamCallbacks();
 		}
-		
-		this->lock();
 		
 		this->frames.clear();
 
@@ -508,9 +507,12 @@ void ADLambda::waitAcquireThread()
 
 void ADLambda::exportThread()
 {
+  this->lock();
 	while(this->connected)
 	{
+	  this->unlock();
 		while (export_queue.empty())    { epicsThreadSleep(SHORT_TIME); }
+		this->lock();
 		
 		if (this->pImage)    { this->pImage->release(); }
 		
@@ -539,6 +541,7 @@ void ADLambda::acquireThread(int receiver)
 	int width, height, toRead, datatype, dual_mode, depth;
 	double exposure;
 	
+	this->lock();		
 	this->getIntegerParam(ADMaxSizeX, &width);
 	this->getIntegerParam(ADMaxSizeY, &height);
 	this->getIntegerParam(ADNumImages, &toRead);
@@ -583,7 +586,6 @@ void ADLambda::acquireThread(int receiver)
 	
 		const int frame_no = acquired[0]->nr();
 		
-		this->lock();		
 			if (this->frames.find(frame_no) == this->frames.end())
 			{
 				epicsTimeStamp currentTime = epicsTime::getCurrent();
@@ -651,13 +653,13 @@ void ADLambda::acquireThread(int receiver)
 				
 				this->frames.erase(frame_no);
 			}
-		this->unlock();
 		
 		int numBuffered = rec->framesQueued();
 		this->setIntegerParam(receiver, LAMBDA_DecodedQueueDepth, numBuffered);
 		callParamCallbacks(receiver);
 	}
-	
+  this->unlock();
+
 	this->threadFinishEvents[receiver]->trigger();
 }
 
