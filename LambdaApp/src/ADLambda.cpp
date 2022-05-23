@@ -202,6 +202,24 @@ void ADLambda::tryConnect()
 				this->callParamCallbacks();
 			});
 			
+			xsp::setLogHandler([](xsp::LogLevel l, const std::string& m) {
+				switch (l) {
+					case xsp::LogLevel::ERROR:
+						printf("Lambda Driver Error: %s\n", m);
+						break;
+					
+					case xsp::LogLevel::WARN:
+						printf("Lambda Driver Warning: %s\n", m);
+						break;
+						
+					default:
+						printf("Lambda Driver Notification: %s\n", m);
+						break;
+					break;
+				}
+			});
+
+			
 			this->connected = true;
 			
 		}
@@ -518,11 +536,14 @@ void ADLambda::waitAcquireThread()
 		this->setIntegerParam(ADAcquire, 0);
 		this->setIntegerParam(ADStatus, ADStatusReadout);
 		this->callParamCallbacks();
-
-		this->unlock();
-			while (! export_queue.empty())    { epicsThreadSleep(SHORT_TIME); }
-		this->lock();
-
+		
+		while (! export_queue.empty())    
+		{
+			this->unlock();
+			epicsThreadSleep(SHORT_TIME); 
+			this->lock();
+		}
+		
 		this->setIntegerParam(ADStatus, ADStatusIdle);
 		this->callParamCallbacks();
 	}
